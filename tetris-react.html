@@ -102,6 +102,10 @@
         // Check if coords are within the well
         return row >= 0 && row < WELL_H && col >=0 && col < WELL_W
     }
+    
+    function getWellMiddle() {
+        return Math.round(WELL_W / 2)
+    }
 
     function canPlacePieceAt(well, piece, row, col) {
         return _.every(dr_dc, ([dr, dc]) =>
@@ -180,8 +184,8 @@
             this.state = {
                             well: createWell(),
                             tetramino: createRandomTetramino(),
-                            mino_row: 1,
-                            mino_col: 5,
+                            mino_row: 0,
+                            mino_col: getWellMiddle(),
                             score: 0,
                         };
         }
@@ -205,28 +209,44 @@
         }
         
         next() {
-            this.setState({tetramino: createRandomTetramino(),
-                           mino_row: 0,
-                           mino_col: 5})
+            // Add current piece to the well's filled cells
+            let newWell = addPieceToWell(this.state.well, this.state.tetramino,
+                this.state.mino_row, this.state.mino_col)
+    
+            // Remove complete rows if there are any
+            removeCompleteRows(newWell)
+    
+            // Update the well and start the new piece
+            this.setState({well: newWell, tetramino: createRandomTetramino(),
+                           mino_row: 0, mino_col: getWellMiddle()})
         }
         
         step() {
-        
+            // If the piece can be moved down one line - move it
+            if (canPlacePieceAt(this.state.well, this.state.tetramino,
+                                this.state.mino_row + 1, this.state.mino_col))
+                this.setState({mino_row: this.state.mino_row + 1})
+            // Otherwise - start the next piece
+            else
+                this.next()
         }
-        
+    
         left() {
+            // If the piece can be moved left - move it
             if (canPlacePieceAt(this.state.well, this.state.tetramino,
                                 this.state.mino_row, this.state.mino_col - 1))
                 this.setState({mino_col: this.state.mino_col - 1})
         }
         
         right() {
+            // If the piece can be moved right - move it
             if (canPlacePieceAt(this.state.well, this.state.tetramino,
                                 this.state.mino_row, this.state.mino_col + 1))
                 this.setState({mino_col: this.state.mino_col + 1})
         }
         
         rotate() {
+            // If the piece can be rotated - rotate
             let rotatedTetramino = rotateTetramino(this.state.tetramino)
             if (canPlacePieceAt(this.state.well, rotatedTetramino,
                                 this.state.mino_row, this.state.mino_col))
@@ -234,23 +254,19 @@
         }
         
         drop() {
+            // See how many lines down the piece should be moved
             let rows_down = 1
+            
             while (canPlacePieceAt(this.state.well, this.state.tetramino,
                                    this.state.mino_row + rows_down + 1, this.state.mino_col))
                 rows_down++
+            
+            // Drop the piece down
+            this.setState({mino_row: this.state.mino_row + rows_down})
     
-            let newWell = addPieceToWell(this.state.well, this.state.tetramino,
-                this.state.mino_row + rows_down, this.state.mino_col)
-            
-            removeCompleteRows(newWell)
-            
-            this.setState({ well: newWell,
-                            mino_row: this.state.mino_row + rows_down})
-            
+            // Proceed to next piece
             this.next()
         }
-        
-        
         
         componentDidMount() {
             // Add key listener
@@ -258,7 +274,7 @@
             // w/o going directly to DOM, so just another shortcut to simplify.
             document.addEventListener("keydown", this.onKeydown);
             // Add timer
-            this.timerID = setInterval( () => this.step(), 1000);
+            this.timerID = setInterval( () => this.step(), 500);
         }
     
         componentWillUnmount() {
@@ -267,7 +283,7 @@
             // Remove timer
             clearInterval(this.timerID);
         }
-    
+        
         onKeydown = (event) => {
             if (event.key === "ArrowDown" || event.key === " ") {
                 this.drop()
@@ -282,7 +298,6 @@
                 this.rotate()
             }
         }
-        
     }
 
     ReactDOM.render(
@@ -290,6 +305,5 @@
             document.getElementById('root')
     );
 </script>
-
 </body>
 </html>
