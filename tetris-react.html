@@ -38,9 +38,9 @@
    7) Simplified Gameplay: no levels, no animations, etc. We would ontherwise have to come up
       with some kind of finite state machine which will double the complexity of the code
       immediately.
+   
+   8) Some low-performance shortcuts, like copying the "well" array on every move.
 -->
-
-<!-- Start with a simple template from reactjs.org -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -55,15 +55,10 @@
 <div id="root"></div>
 <script type="text/babel">
     
-    const WELL_H = 20
-    const WELL_W = 10
+    //
+    //   Tetraminoes
+    //
     
-    function createWell() {
-        // Create WELL_H x WELL_W integer array of zeros
-        return Array(WELL_H).fill().map(() => Array(WELL_W).fill(0));
-    }
-
-    // Define tetraminoes
     const tetraminoes = _.unzip([
         // Style Note: if we had modules we wouldn't need to use obscure
         // transposition here, instead we would just have `tetraminoes.js`
@@ -81,12 +76,26 @@
     }
     
     function createRandomTetramino() {
+        // Create randomly one of the six tetraminoes
         const i = Math.round(Math.random() * (tetraminoes.length - 1))
         return createTetramino(i)
     }
     
     function rotateTetramino(t) {
+        // Rotate tetramino in-place counter-clockwise
         return _.unzip(t).map((row) => _.reverse(row))
+    }
+
+    //
+    //   The Well
+    //
+    
+    const WELL_H = 20
+    const WELL_W = 10
+
+    function createWell() {
+        // Create WELL_H x WELL_W integer array of zeros
+        return Array(WELL_H).fill().map(() => Array(WELL_W).fill(0));
     }
 
     // Row/Col deltas allow us to get along with one loop instead of two nested ones
@@ -108,11 +117,16 @@
     }
 
     function canPlacePieceAt(well, piece, row, col) {
+        // Check if `piece` can be placed at the specified position of the well
+        // w/o crossing the bounds of the well and w/o overlaping with the already
+        // filled cells.
         return _.every(dr_dc, ([dr, dc]) =>
             !piece[dr][dc] || (areValidCoords(row + dr, col + dc) && !well[row + dr][col + dc]))
     }
     
     function addPieceToWell(well, piece, row, col) {
+        // Create a new instance of Well with the specified piece
+        // added to the set of well's filled cells.
         let newWell = _.cloneDeep(well)
         
         for (const [dr, dc] of dr_dc)
@@ -123,38 +137,43 @@
     }
     
     function isRowComplete(well, row) {
+        // Check if every cell in the row is filled
         return _.every(well[row])
     }
 
     function removeRow(well, row) {
+        // Remove the specified row
         well.splice(row, 1)
+        // Add an empty row to the top
         well.unshift(Array(WELL_W).fill(0))
     }
     
     function removeCompleteRows(well) {
         let row = WELL_H - 1
         
+        let nremoved = 0
+        
         while (row >= 0)
-            if (isRowComplete(well, row))
+            if (isRowComplete(well, row)) {
                 removeRow(well, row)
+                nremoved++
+            }
             else
                row--
+        
+        return nremoved
     }
     
-    /*
-    
-        UI
-    
-     */
+    //
+    //   UI
+    //
     
     class Cell extends React.Component {
         render() {
-            // Style Note: I would normally do height, width and bgcolor in CSS,
+            // Style Note: I would normally specify height, width and bgcolor in CSS,
             // but this approach with magic constants is just simpler for now.
-            return <td width="32px"
-                       height="32px"
-                       bgcolor={this.props.filled ? "#000" : "#CCC"}>
-                   </td>
+            return <td width="32px" height="32px"
+                       bgcolor={this.props.filled ? "#000" : "#CCC"}> </td>
         }
     }
 
@@ -162,7 +181,7 @@
         render() {
             return <table>
                 <tbody>
-                {this.props.data.map((row, index) =>
+                {this.props.data.map((row) =>
                     <tr>
                         {row.map((cell_value) =>
                             <Cell filled={cell_value}/>
@@ -175,7 +194,9 @@
     }
     
     class Score extends React.Component {
-        // ...
+        render() {
+            return <h2>Score: {this.props.value}</h2>
+        }
     }
 
     class Game extends React.Component {
@@ -191,7 +212,6 @@
         }
     
         render() {
-            
             // Note: to render the picture we each time create
             // a new copy of the well and then draw the piece
             // on top of it.
@@ -203,7 +223,8 @@
             return <center>
                 <br/>
                 <h1>Minimal Tetris for Deedmob</h1>
-                <br/>
+                <p>← LEFT &nbsp; → RIGHT &nbsp; ↑ ROTATE &nbsp; ↓ DROP</p>
+                <Score value={this.state.score}/>
                 <Well data={well2draw}/>
             </center>
         }
@@ -214,15 +235,31 @@
                 this.state.mino_row, this.state.mino_col)
     
             // Remove complete rows if there are any
-            removeCompleteRows(newWell)
-    
-            // Update the well and start the new piece
-            this.setState({well: newWell, tetramino: createRandomTetramino(),
-                           mino_row: 0, mino_col: getWellMiddle()})
+            let nremoved = removeCompleteRows(newWell)
+            
+            // Create next tetramino
+            let nextTetramino = createRandomTetramino()
+            
+            // If next tetramino can be placed into the well:
+            // Update the well and the score, and start the new piece
+            if (canPlacePieceAt(this.state.well, nextTetramino,
+                                0, getWellMiddle()))
+                this.setState({well: newWell,
+                               tetramino: nextTetramino,
+                               mino_row: 0,
+                               mino_col: getWellMiddle(),
+                               score: this.state.score + nremoved})
+            // Otherwise, the game is over - let's reset the well and the score
+            else
+                this.setState({well: createWell(),
+                               tetramino: nextTetramino,
+                               mino_row: 0,
+                               mino_col: getWellMiddle(),
+                               score: 0})
         }
         
         step() {
-            // If the piece can be moved down one line - move it
+            // If the piece can move down one line - let it move
             if (canPlacePieceAt(this.state.well, this.state.tetramino,
                                 this.state.mino_row + 1, this.state.mino_col))
                 this.setState({mino_row: this.state.mino_row + 1})
