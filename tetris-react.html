@@ -70,14 +70,23 @@
         // with pieces defined vertically, one by one.
         // We use it to save some vertical space for better readability
         // in this single-file approach.
-        [[1,0,0,0], [1,0,0,0], [1,0,0,0], [1,0,0,0], [1,1,0,0]],
-        [[1,0,0,0], [1,0,0,0], [1,1,0,0], [1,1,0,0], [1,1,0,0]],
-        [[1,0,0,0], [1,1,0,0], [0,1,0,0], [1,0,0,0], [0,0,0,0]],
-        [[1,0,0,0], [0,0,0,0], [0,0,0,0], [0,0,0,0], [0,0,0,0]],
+        [[0,0,1,0], [0,1,0,0], [0,0,0,0], [0,1,0,0], [0,0,0,0]],
+        [[0,0,1,0], [0,1,0,0], [0,1,0,0], [0,1,1,0], [0,1,1,0]],
+        [[0,0,1,0], [0,1,1,0], [0,1,1,0], [0,1,0,0], [0,1,1,0]],
+        [[0,0,1,0], [0,0,0,0], [0,0,1,0], [0,0,0,0], [0,0,0,0]],
     ]);
     
     function createTetramino(i) {
         return _.cloneDeep(tetraminoes[i])
+    }
+    
+    function createRandomTetramino() {
+        const i = Math.round(Math.random() * (tetraminoes.length - 1))
+        return createTetramino(i)
+    }
+    
+    function rotateTetramino(t) {
+        return _.unzip(t).map((row) => _.reverse(row))
     }
 
     // Row/Col deltas allow us to get along with one loop instead of two nested ones
@@ -195,14 +204,8 @@
             </center>
         }
         
-        //
-        //   High-level logic
-        //
-        
         next() {
-            const i = Math.round(Math.random() * 4)
-            
-            this.setState({tetramino: createTetramino(i),
+            this.setState({tetramino: createRandomTetramino(),
                            mino_row: 0,
                            mino_col: 5})
         }
@@ -223,6 +226,11 @@
                 this.setState({mino_col: this.state.mino_col + 1})
         }
         
+        rotate() {
+            // !+ check if can be rotated
+            this.setState({tetramino: rotateTetramino(this.state.tetramino)})
+        }
+        
         drop() {
             let rows_down = 1
             while (canPlacePieceAt(this.state.well, this.state.tetramino,
@@ -239,14 +247,10 @@
             
             this.next()
         }
-    
-        //
-        //   Handle keyboard and timer events
-        //
         
-        // Note: there is probably a way to do this more naturally with React,
-        // w/o going directly to DOM, so just another shortcut to simplify.
         componentDidMount() {
+            // Note: there is probably a way to do this more naturally with React,
+            // w/o going directly to DOM, so just another shortcut to simplify.
             document.addEventListener("keydown", this.onKeydown);
         }
     
@@ -263,6 +267,9 @@
             }
             else if (event.key === "ArrowRight") {
                 this.right()
+            }
+            else if (event.key === "ArrowUp") {
+                this.rotate()
             }
         }
         
