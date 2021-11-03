@@ -1,0 +1,279 @@
+<!--
+    Hey!
+    
+    This a plain simple tetris implementation to test how quickly
+    I can recall how to code in React/JS.
+    
+    A LOT of simplifications are made to make it quicker to write:
+    
+    1) Single File - a good choice for a demo like this.
+    
+       In real production we would of course:
+       
+        a) separate resources/assets (CSS, etc.), views (JSX) and logic (JS)
+        b) make JS code modular
+        c) not be using babel
+        d) pack and deploy everything with something like webpack
+        c) have a clear project structure
+        d) ...
+        
+       ...but it would take days to research a modern way to do all these
+       things in JS, so let's just go with Single File FTW.
+       
+       It also gives it a bit of Literate Programming taste :)
+    
+   2) Simple monochrome HTML  - no need to spend attention coins on
+      graphical design choices (which I'm bad at anyway), CSS, grid layouts, etc.
+    
+   3) Just Desktop version - let's just support keys.
+   
+   4) No tests (would require researching JS test frameworks)
+   
+   5) No types :(
+   
+   6) No assertions (we assume that all inputs to all functions are within the defined domains,
+      e.g. if a function waits for a 4x4 integer array to be passed as an arugment it will
+      not make any additional tests for the exact array size or its elements' types)
+      
+   7) Simplified Gameplay: no levels, no animations, etc. We would ontherwise have to come up
+      with some kind of finite state machine which will double the complexity of the code
+      immediately.
+-->
+
+<!-- Start with a simple template from reactjs.org -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Hello World</title>
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+    
+    const WELL_H = 20
+    const WELL_W = 10
+    
+    function createWell() {
+        // Create WELL_H x WELL_W integer array of zeros
+        return Array(WELL_H).fill().map(() => Array(WELL_W).fill(0));
+    }
+
+    // Define tetraminoes
+    const tetraminoes = _.unzip([
+        // Style Note: if we had modules we wouldn't need to use obscure
+        // transposition here, instead we would just have `tetraminoes.js`
+        // with pieces defined vertically, one by one.
+        // We use it to save some vertical space for better readability
+        // in this single-file approach.
+        [[1,0,0,0], [1,0,0,0], [1,0,0,0], [1,0,0,0], [1,1,0,0]],
+        [[1,0,0,0], [1,0,0,0], [1,1,0,0], [1,1,0,0], [1,1,0,0]],
+        [[1,0,0,0], [1,1,0,0], [0,1,0,0], [1,0,0,0], [0,0,0,0]],
+        [[1,0,0,0], [0,0,0,0], [0,0,0,0], [0,0,0,0], [0,0,0,0]],
+    ]);
+    
+    function createTetramino(i) {
+        return _.cloneDeep(tetraminoes[i])
+    }
+
+    // Row/Col deltas allow us to get along with one loop instead of two nested ones
+    // when dealing with 2d-arrays below, thus having simpler code.
+    // Style Note: we could've generated this with some obscure line of code, but it
+    // looks much more clear to have them defined explicitly.
+    const dr_dc = [ [0,0], [0, 1], [0, 2], [0, 3],
+                    [1,0], [1, 1], [1, 2], [1, 3],
+                    [2,0], [2, 1], [2, 2], [2, 3],
+                    [3,0], [3, 1], [3, 2], [3, 3] ];
+    
+    function areValidCoords(row, col) {
+        // Check if coords are within the well
+        return row >= 0 && row < WELL_H && col >=0 && col < WELL_W
+    }
+
+    function canPlacePieceAt(well, piece, row, col) {
+        return _.every(dr_dc, ([dr, dc]) =>
+            !piece[dr][dc] || (areValidCoords(row + dr, col + dc) && !well[row + dr][col + dc]))
+    }
+    
+    function addPieceToWell(well, piece, row, col) {
+        let newWell = _.cloneDeep(well)
+        
+        for (const [dr, dc] of dr_dc)
+            if (areValidCoords(row + dr, col + dc) && piece[dr][dc])
+                newWell[row + dr][col + dc] = 1
+        
+        return newWell
+    }
+    
+    function isRowComplete(well, row) {
+        return _.every(well[row])
+    }
+
+    function removeRow(well, row) {
+        well.splice(row, 1)
+        well.unshift(Array(WELL_W).fill(0))
+    }
+    
+    function removeCompleteRows(well) {
+        let row = WELL_H - 1
+        
+        while (row >= 0)
+            if (isRowComplete(well, row))
+                removeRow(well, row)
+            else
+               row--
+    }
+    
+    /*
+    
+        UI
+    
+     */
+    
+    class Cell extends React.Component {
+        render() {
+            // Style Note: I would normally do height, width and bgcolor in CSS,
+            // but this approach with magic constants is just simpler for now.
+            return <td width="32px"
+                       height="32px"
+                       bgcolor={this.props.filled ? "#000" : "#CCC"}>
+                   </td>
+        }
+    }
+
+    class Well extends React.Component {
+        render() {
+            return <table>
+                <tbody>
+                {this.props.data.map((row, index) =>
+                    <tr>
+                        {row.map((cell_value) =>
+                            <Cell filled={cell_value}/>
+                        )}
+                    </tr>
+                )}
+                </tbody>
+            </table>
+        }
+    }
+    
+    class Score extends React.Component {
+        // ...
+    }
+
+    class Game extends React.Component {
+        constructor(props) {
+            super(props);
+            this.state = {
+                            well: createWell(),
+                            tetramino: createTetramino(4),
+                            mino_row: 1,
+                            mino_col: 5,
+                            score: 0,
+                        };
+        }
+    
+        render() {
+            
+            // Note: to render the picture we each time create
+            // a new copy of the well and then draw the piece
+            // on top of it.
+            // This is a simple and clearly inefficient way to
+            // do things, we would optimize it in real life.
+            let well2draw = addPieceToWell(this.state.well, this.state.tetramino,
+                this.state.mino_row, this.state.mino_col)
+            
+            return <center>
+                <br/>
+                <h1>Minimal Tetris for Deedmob</h1>
+                <br/>
+                <Well data={well2draw}/>
+            </center>
+        }
+        
+        //
+        //   High-level logic
+        //
+        
+        next() {
+            const i = Math.round(Math.random() * 4)
+            
+            this.setState({tetramino: createTetramino(i),
+                           mino_row: 0,
+                           mino_col: 5})
+        }
+        
+        step() {
+        
+        }
+        
+        left() {
+            if (canPlacePieceAt(this.state.well, this.state.tetramino,
+                                this.state.mino_row, this.state.mino_col - 1))
+                this.setState({mino_col: this.state.mino_col - 1})
+        }
+        
+        right() {
+            if (canPlacePieceAt(this.state.well, this.state.tetramino,
+                                this.state.mino_row, this.state.mino_col + 1))
+                this.setState({mino_col: this.state.mino_col + 1})
+        }
+        
+        drop() {
+            let rows_down = 1
+            while (canPlacePieceAt(this.state.well, this.state.tetramino,
+                                   this.state.mino_row + rows_down + 1, this.state.mino_col))
+                rows_down++
+    
+            let newWell = addPieceToWell(this.state.well, this.state.tetramino,
+                this.state.mino_row + rows_down, this.state.mino_col)
+            
+            removeCompleteRows(newWell)
+            
+            this.setState({ well: newWell,
+                            mino_row: this.state.mino_row + rows_down})
+            
+            this.next()
+        }
+    
+        //
+        //   Handle keyboard and timer events
+        //
+        
+        // Note: there is probably a way to do this more naturally with React,
+        // w/o going directly to DOM, so just another shortcut to simplify.
+        componentDidMount() {
+            document.addEventListener("keydown", this.onKeydown);
+        }
+    
+        componentWillUnmount() {
+            document.removeEventListener("keydown", this.onKeydown);
+        }
+    
+        onKeydown = (event) => {
+            if (event.key === "ArrowDown" || event.key === " ") {
+                this.drop()
+            }
+            else if (event.key === "ArrowLeft") {
+                this.left()
+            }
+            else if (event.key === "ArrowRight") {
+                this.right()
+            }
+        }
+        
+    }
+
+    // Finally, render the whole thing!
+    ReactDOM.render(
+            <Game />,
+            document.getElementById('root')
+    );
+</script>
+
+</body>
+</html>
