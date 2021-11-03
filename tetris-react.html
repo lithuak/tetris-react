@@ -227,8 +227,10 @@
         }
         
         rotate() {
-            // !+ check if can be rotated
-            this.setState({tetramino: rotateTetramino(this.state.tetramino)})
+            let rotatedTetramino = rotateTetramino(this.state.tetramino)
+            if (canPlacePieceAt(this.state.well, rotatedTetramino,
+                                this.state.mino_row, this.state.mino_col))
+                this.setState({tetramino: rotatedTetramino})
         }
         
         drop() {
