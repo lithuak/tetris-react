@@ -70,10 +70,10 @@
         // with pieces defined vertically, one by one.
         // We use it to save some vertical space for better readability
         // in this single-file approach.
-        [[0,0,1,0], [0,1,0,0], [0,0,0,0], [0,1,0,0], [0,0,0,0]],
-        [[0,0,1,0], [0,1,0,0], [0,1,0,0], [0,1,1,0], [0,1,1,0]],
-        [[0,0,1,0], [0,1,1,0], [0,1,1,0], [0,1,0,0], [0,1,1,0]],
-        [[0,0,1,0], [0,0,0,0], [0,0,1,0], [0,0,0,0], [0,0,0,0]],
+        [[0,0,1,0], [0,1,0,0], [0,0,0,0], [0,0,0,0], [0,1,0,0], [0,0,0,0]],
+        [[0,0,1,0], [0,1,0,0], [0,1,0,0], [0,0,1,0], [0,1,1,0], [0,1,1,0]],
+        [[0,0,1,0], [0,1,1,0], [0,1,1,0], [0,1,1,0], [0,1,0,0], [0,1,1,0]],
+        [[0,0,1,0], [0,0,0,0], [0,0,1,0], [0,1,0,0], [0,0,0,0], [0,0,0,0]],
     ]);
     
     function createTetramino(i) {
@@ -179,7 +179,7 @@
             super(props);
             this.state = {
                             well: createWell(),
-                            tetramino: createTetramino(4),
+                            tetramino: createRandomTetramino(),
                             mino_row: 1,
                             mino_col: 5,
                             score: 0,
