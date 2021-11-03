@@ -250,14 +250,22 @@
             this.next()
         }
         
+        
+        
         componentDidMount() {
-            // Note: there is probably a way to do this more naturally with React,
+            // Add key listener
+            // Note: there is probably a better way to do this natively with React,
             // w/o going directly to DOM, so just another shortcut to simplify.
             document.addEventListener("keydown", this.onKeydown);
+            // Add timer
+            this.timerID = setInterval( () => this.step(), 1000);
         }
     
         componentWillUnmount() {
+            // Remove key listener
             document.removeEventListener("keydown", this.onKeydown);
+            // Remove timer
+            clearInterval(this.timerID);
         }
     
         onKeydown = (event) => {
@@ -277,7 +285,6 @@
         
     }
 
-    // Finally, render the whole thing!
     ReactDOM.render(
             <Game />,
             document.getElementById('root')
